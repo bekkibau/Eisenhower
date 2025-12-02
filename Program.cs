@@ -7,9 +7,24 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Configure SQLite database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Data Source=eisenhower.db";
+// Configure SQLite database - use user data directory for packaged app
+string dbPath;
+if (builder.Environment.IsProduction())
+{
+    // Store database in user's Application Support folder for macOS app
+    var appDataPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Eisenhower"
+    );
+    Directory.CreateDirectory(appDataPath);
+    dbPath = Path.Combine(appDataPath, "eisenhower.db");
+}
+else
+{
+    dbPath = "eisenhower.db";
+}
+
+var connectionString = $"Data Source={dbPath}";
 builder.Services.AddDbContext<EisenhowerDbContext>(options =>
     options.UseSqlite(connectionString));
 
@@ -31,11 +46,14 @@ using (var scope = app.Services.CreateScope())
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in development (production app runs on localhost HTTP)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseRouting();
 
 app.UseAuthorization();

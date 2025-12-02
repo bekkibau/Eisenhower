@@ -44,11 +44,42 @@ A task management web application built with ASP.NET Core 9 and C# 13, implement
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 
+## Installation
+
+### Option 1: Download macOS App (Recommended)
+
+Download the latest release from the [Releases](../../releases) page:
+
+- **Apple Silicon (M1/M2/M3)**: `Eisenhower-x.x.x-osx-arm64.dmg`
+- **Intel Mac**: `Eisenhower-x.x.x-osx-x64.dmg`
+
+**Installation steps:**
+1. Open the downloaded DMG file
+2. Drag the Eisenhower app to your Applications folder
+3. **First launch only**: Right-click the app and select "Open" (required for unsigned apps). You may need to Open System Settings. Click Privacy & Security, scroll down, and click the Open Anyway button to confirm your intent to open or install the app. See [Apple Support steps](https://support.apple.com/en-us/102445#:~:text=Click%20Privacy%20%26%20Security%2C%20scroll,open%20or%20install%20the%20app).
+
+The app will automatically open in your default browser. Your data is stored locally.
+
+### Option 2: Run from Source
+
+```bash
+# Restore dependencies
+dotnet restore
+
+# Run the application
+dotnet run
+```
+
+The application will start at `http://localhost:5086`.
+
 ## Getting Started
 
 ### Run
 
 ```bash
+# Clone
+git clone https://github.com/bekkibau/Eisenhower.git
+
 # Restore dependencies
 dotnet restore
 

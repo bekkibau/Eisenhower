@@ -1,0 +1,198 @@
+name: Build and Release macOS App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  APP_NAME: 'Eisenhower'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        runtime: [osx-x64, osx-arm64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish self-contained app
+        run: |
+          dotnet publish -c Release \
+            -r ${{ matrix.runtime }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:Version=${{ steps.version.outputs.VERSION }} \
+            -o ./publish/${{ matrix.runtime }}
+
+      - name: Create macOS app bundle
+        run: |
+          APP_BUNDLE="./publish/${{ env.APP_NAME }}-${{ matrix.runtime }}.app"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$APP_BUNDLE/Contents/Resources"
+          
+          # Copy the executable and all published files
+          cp -R ./publish/${{ matrix.runtime }}/* "$APP_BUNDLE/Contents/MacOS/"
+          
+          # Create Info.plist
+          cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>${{ env.APP_NAME }}</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.eisenhower.app</string>
+              <key>CFBundleName</key>
+              <string>${{ env.APP_NAME }}</string>
+              <key>CFBundleDisplayName</key>
+              <string>Eisenhower Matrix</string>
+              <key>CFBundleVersion</key>
+              <string>${{ steps.version.outputs.VERSION }}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${{ steps.version.outputs.VERSION }}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>LSApplicationCategoryType</key>
+              <string>public.app-category.productivity</string>
+          </dict>
+          </plist>
+          EOF
+          
+          # Create launcher script to open browser automatically
+          cat > "$APP_BUNDLE/Contents/MacOS/launch.sh" << 'LAUNCHER'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          cd "$DIR"
+          
+          # Find an available port
+          PORT=5000
+          while lsof -i :$PORT >/dev/null 2>&1; do
+              PORT=$((PORT + 1))
+          done
+          
+          # Export the URL for the app
+          export ASPNETCORE_URLS="http://localhost:$PORT"
+          export ASPNETCORE_ENVIRONMENT="Production"
+          
+          # Open browser after a short delay
+          (sleep 2 && open "http://localhost:$PORT") &
+          
+          # Run the app
+          exec "$DIR/Eisenhower"
+          LAUNCHER
+          chmod +x "$APP_BUNDLE/Contents/MacOS/launch.sh"
+          
+          # Update Info.plist to use launcher
+          sed -i '' 's|<string>Eisenhower</string>|<string>launch.sh</string>|' "$APP_BUNDLE/Contents/Info.plist"
+
+      - name: Create DMG
+        run: |
+          # Create a temporary directory for DMG contents
+          DMG_DIR="./dmg-contents"
+          mkdir -p "$DMG_DIR"
+          
+          # Copy the app bundle
+          cp -R "./publish/${{ env.APP_NAME }}-${{ matrix.runtime }}.app" "$DMG_DIR/"
+          
+          # Create a symlink to Applications folder
+          ln -s /Applications "$DMG_DIR/Applications"
+          
+          # Create the DMG
+          hdiutil create -volname "${{ env.APP_NAME }}" \
+            -srcfolder "$DMG_DIR" \
+            -ov -format UDZO \
+            "./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ matrix.runtime }}
+          path: ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg
+
+  create-release:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.version.outputs.VERSION) || github.ref_name }}
+          name: Eisenhower Matrix v${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ./artifacts/**/*.dmg
+          body: |
+            ## Eisenhower Matrix v${{ steps.version.outputs.VERSION }}
+            
+            ### Installation Instructions
+            
+            1. Download the appropriate DMG file for your Mac:
+               - **Apple Silicon (M1/M2/M3)**: `Eisenhower-${{ steps.version.outputs.VERSION }}-osx-arm64.dmg`
+               - **Intel Mac**: `Eisenhower-${{ steps.version.outputs.VERSION }}-osx-x64.dmg`
+            
+            2. Open the DMG file
+            3. Drag the Eisenhower app to your Applications folder
+            4. **First launch**: Right-click the app and select "Open" (required for unsigned apps). You may need to Open System Settings. Click Privacy & Security, scroll down, and click the Open Anyway button to confirm your intent to open or install the app. See [Apple Support steps](https://support.apple.com/en-us/102445#:~:text=Click%20Privacy%20%26%20Security%2C%20scroll,open%20or%20install%20the%20app).
+            
+            After the first launch, you can open the app normally by double-clicking.
+            
+            ### What's New
+            See the automatically generated release notes below.
+            
+            ### Note
+            This app runs a local web server and opens in your default browser. 
+            Your data is stored locally in a SQLite database.

@@ -4,6 +4,14 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Eisenhower</AssemblyName>
+    <Product>Eisenhower Matrix</Product>
+    <Description>Task management using the Eisenhower Matrix methodology</Description>
+    <Copyright>© 2024</Copyright>
+    
+    <!-- Publishing settings -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
