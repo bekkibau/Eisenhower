@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Eisenhower.styles.css" asp-append-version="true" />
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
     <header>
         <nav class="navbar navbar-expand-lg sticky-top">
             <div class="container-fluid">
@@ -49,7 +49,7 @@
         </nav>
     </header>
     
-    <div class="container-fluid px-4">
+    <div class="container-fluid px-4 flex-grow-1">
         @if (TempData["SuccessMessage"] != null)
         {
             <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
@@ -69,7 +69,7 @@
         </main>
     </div>
 
-    <footer class="footer text-muted py-3 mt-4">
+    <footer class="footer text-muted py-3 mt-auto">
         <div class="container text-center">
             <span>&copy; @DateTime.Now.Year Eisenhower Matrix - Task Management</span>
         </div>

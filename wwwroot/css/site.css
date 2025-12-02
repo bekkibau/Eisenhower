@@ -39,15 +39,7 @@ html {
     }
 }
 
-body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-main {
-    flex: 1;
-}
+/* Sticky footer handled by Bootstrap classes in _Layout.cshtml */
 
 /* ===== Navbar ===== */
 .navbar {
