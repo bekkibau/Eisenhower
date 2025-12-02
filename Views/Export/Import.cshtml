@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "Import Data";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0"><i class="bi bi-upload me-2"></i>Import Data</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Upload a previously exported JSON backup file to restore your tasks and settings.
+                </p>
+                
+                <form asp-action="Import" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Backup File <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".json" required />
+                        <div class="form-text">Select a .json backup file exported from this application.</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="clearExisting" name="clearExisting" value="true">
+                            <label class="form-check-label text-danger" for="clearExisting">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Clear existing tasks before import
+                            </label>
+                            <div class="form-text">
+                                Warning: This will permanently delete all your current tasks before importing the backup.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-1"></i>Import
+                        </button>
+                        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle me-2"></i>Import Notes</h6>
+                <ul class="small text-muted mb-0">
+                    <li>Only JSON files exported from this application are supported.</li>
+                    <li>If "Clear existing tasks" is not checked, imported tasks will be added to your existing tasks.</li>
+                    <li>Settings from the backup will override your current settings.</li>
+                    <li>This operation cannot be undone - consider exporting your current data first.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

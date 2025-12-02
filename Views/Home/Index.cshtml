@@ -1,0 +1,229 @@
+﻿@model Eisenhower.Models.ViewModels.MatrixViewModel
+@{
+    ViewData["Title"] = "Eisenhower Matrix";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">
+        <i class="bi bi-grid-3x3-gap-fill me-2"></i>
+        @if (Model.FilterQuadrant.HasValue)
+        {
+            @GetQuadrantTitle(Model.FilterQuadrant.Value)
+        }
+        else
+        {
+            <span>Eisenhower Matrix</span>
+        }
+    </h1>
+    <div class="d-flex gap-2 align-items-center">
+        <!-- View Mode Toggle -->
+        <div class="btn-group" role="group" aria-label="View mode">
+            <form asp-controller="Settings" asp-action="SetViewMode" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="viewMode" value="Card" />
+                <button type="submit" class="btn btn-sm @(Model.ViewMode == Eisenhower.Models.ViewMode.Card ? "btn-primary" : "btn-outline-secondary")" title="Card View">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                </button>
+            </form>
+            <form asp-controller="Settings" asp-action="SetViewMode" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="viewMode" value="List" />
+                <button type="submit" class="btn btn-sm @(Model.ViewMode == Eisenhower.Models.ViewMode.List ? "btn-primary" : "btn-outline-secondary")" title="List View">
+                    <i class="bi bi-list-ul"></i>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Show Completed Toggle -->
+        <form asp-controller="Settings" asp-action="SetShowCompleted" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="show" value="@((!Model.ShowCompletedTasks).ToString().ToLower())" />
+            <button type="submit" class="btn btn-sm @(Model.ShowCompletedTasks ? "btn-primary" : "btn-outline-secondary")" title="@(Model.ShowCompletedTasks ? "Hide Completed" : "Show Completed")">
+                <i class="bi @(Model.ShowCompletedTasks ? "bi-eye" : "bi-eye-slash")"></i>
+                @(Model.ShowCompletedTasks ? "Completed" : "Hidden")
+            </button>
+        </form>
+
+        <!-- Filter Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item @(Model.FilterQuadrant == null ? "active" : "")" asp-controller="Home" asp-action="Index">All Quadrants</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item @(Model.FilterQuadrant == Eisenhower.Models.Quadrant.UrgentImportant ? "active" : "")" asp-controller="Home" asp-action="Index" asp-route-quadrant="0">Q1: Urgent & Important</a></li>
+                <li><a class="dropdown-item @(Model.FilterQuadrant == Eisenhower.Models.Quadrant.NotUrgentImportant ? "active" : "")" asp-controller="Home" asp-action="Index" asp-route-quadrant="1">Q2: Not Urgent but Important</a></li>
+                <li><a class="dropdown-item @(Model.FilterQuadrant == Eisenhower.Models.Quadrant.UrgentNotImportant ? "active" : "")" asp-controller="Home" asp-action="Index" asp-route-quadrant="2">Q3: Urgent but Not Important</a></li>
+                <li><a class="dropdown-item @(Model.FilterQuadrant == Eisenhower.Models.Quadrant.NotUrgentNotImportant ? "active" : "")" asp-controller="Home" asp-action="Index" asp-route-quadrant="3">Q4: Not Urgent & Not Important</a></li>
+            </ul>
+        </div>
+
+        <!-- New Task Button -->
+        <a asp-controller="Tasks" asp-action="Create" class="btn btn-sm btn-success">
+            <i class="bi bi-plus-lg"></i> New Task
+        </a>
+    </div>
+</div>
+
+@if (Model.ViewMode == Eisenhower.Models.ViewMode.Card)
+{
+    <!-- Matrix Grid View -->
+    <div class="matrix-container">
+        <!-- Header Labels -->
+        <div class="matrix-header">
+            <div class="matrix-corner"></div>
+            <div class="matrix-col-header urgent-header">
+                <i class="bi bi-exclamation-triangle-fill"></i> URGENT
+            </div>
+            <div class="matrix-col-header not-urgent-header">
+                <i class="bi bi-clock"></i> NOT URGENT
+            </div>
+        </div>
+
+        <!-- Important Row -->
+        <div class="matrix-row">
+            <div class="matrix-row-header important-header">
+                <span><i class="bi bi-star-fill"></i> IMPORTANT</span>
+            </div>
+            
+            <!-- Q1: Urgent & Important -->
+            <div class="quadrant quadrant-1">
+                <div class="quadrant-header">
+                    <span class="quadrant-title">DO FIRST</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="0" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i>
+                    </a>
+                </div>
+                <div class="task-list">
+                    @await Html.PartialAsync("_TaskList", Model.UrgentImportantTasks)
+                </div>
+            </div>
+
+            <!-- Q2: Not Urgent but Important -->
+            <div class="quadrant quadrant-2">
+                <div class="quadrant-header">
+                    <span class="quadrant-title">SCHEDULE</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="1" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i>
+                    </a>
+                </div>
+                <div class="task-list">
+                    @await Html.PartialAsync("_TaskList", Model.NotUrgentImportantTasks)
+                </div>
+            </div>
+        </div>
+
+        <!-- Not Important Row -->
+        <div class="matrix-row">
+            <div class="matrix-row-header not-important-header">
+                <span><i class="bi bi-star"></i> NOT IMPORTANT</span>
+            </div>
+
+            <!-- Q3: Urgent but Not Important -->
+            <div class="quadrant quadrant-3">
+                <div class="quadrant-header">
+                    <span class="quadrant-title">DELEGATE</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="2" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i>
+                    </a>
+                </div>
+                <div class="task-list">
+                    @await Html.PartialAsync("_TaskList", Model.UrgentNotImportantTasks)
+                </div>
+            </div>
+
+            <!-- Q4: Not Urgent & Not Important -->
+            <div class="quadrant quadrant-4">
+                <div class="quadrant-header">
+                    <span class="quadrant-title">ELIMINATE</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="3" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i>
+                    </a>
+                </div>
+                <div class="task-list">
+                    @await Html.PartialAsync("_TaskList", Model.NotUrgentNotImportantTasks)
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- List View -->
+    <div class="list-view">
+        @if (Model.FilterQuadrant == null || Model.FilterQuadrant == Eisenhower.Models.Quadrant.UrgentImportant)
+        {
+            <div class="card mb-4 border-danger">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-1-circle-fill me-2"></i>Q1: Urgent & Important - DO FIRST</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="0" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i> Add
+                    </a>
+                </div>
+                <div class="card-body">
+                    @await Html.PartialAsync("_TaskListView", Model.UrgentImportantTasks)
+                </div>
+            </div>
+        }
+
+        @if (Model.FilterQuadrant == null || Model.FilterQuadrant == Eisenhower.Models.Quadrant.NotUrgentImportant)
+        {
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-2-circle-fill me-2"></i>Q2: Not Urgent but Important - SCHEDULE</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="1" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i> Add
+                    </a>
+                </div>
+                <div class="card-body">
+                    @await Html.PartialAsync("_TaskListView", Model.NotUrgentImportantTasks)
+                </div>
+            </div>
+        }
+
+        @if (Model.FilterQuadrant == null || Model.FilterQuadrant == Eisenhower.Models.Quadrant.UrgentNotImportant)
+        {
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-3-circle-fill me-2"></i>Q3: Urgent but Not Important - DELEGATE</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="2" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i> Add
+                    </a>
+                </div>
+                <div class="card-body">
+                    @await Html.PartialAsync("_TaskListView", Model.UrgentNotImportantTasks)
+                </div>
+            </div>
+        }
+
+        @if (Model.FilterQuadrant == null || Model.FilterQuadrant == Eisenhower.Models.Quadrant.NotUrgentNotImportant)
+        {
+            <div class="card mb-4 border-secondary">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-4-circle-fill me-2"></i>Q4: Not Urgent & Not Important - ELIMINATE</span>
+                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="3" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus"></i> Add
+                    </a>
+                </div>
+                <div class="card-body">
+                    @await Html.PartialAsync("_TaskListView", Model.NotUrgentNotImportantTasks)
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@functions {
+    string GetQuadrantTitle(Eisenhower.Models.Quadrant quadrant)
+    {
+        return quadrant switch
+        {
+            Eisenhower.Models.Quadrant.UrgentImportant => "Q1: Urgent & Important",
+            Eisenhower.Models.Quadrant.NotUrgentImportant => "Q2: Not Urgent but Important",
+            Eisenhower.Models.Quadrant.UrgentNotImportant => "Q3: Urgent but Not Important",
+            Eisenhower.Models.Quadrant.NotUrgentNotImportant => "Q4: Not Urgent & Not Important",
+            _ => "Eisenhower Matrix"
+        };
+    }
+}

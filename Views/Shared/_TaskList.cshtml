@@ -1,0 +1,64 @@
+@model List<Eisenhower.Models.TaskItem>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state drop-zone-empty">
+        <i class="bi bi-inbox text-muted"></i>
+        <p class="text-muted small mb-0">No tasks</p>
+        <p class="text-muted small mb-0">Drop here</p>
+    </div>
+}
+else
+{
+    @foreach (var task in Model)
+    {
+        <div class="task-card @(task.IsCompleted ? "completed" : "")" data-task-id="@task.Id" draggable="true">
+            <div class="task-card-header">
+                <span class="drag-handle me-1" title="Drag to move">
+                    <i class="bi bi-grip-vertical text-muted"></i>
+                </span>
+                <form asp-controller="Tasks" asp-action="Toggle" asp-route-id="@task.Id" method="post" class="d-inline toggle-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm p-0 task-checkbox" title="@(task.IsCompleted ? "Mark incomplete" : "Mark complete")">
+                        <i class="bi @(task.IsCompleted ? "bi-check-circle-fill text-success" : "bi-circle")"></i>
+                    </button>
+                </form>
+                <span class="task-title @(task.IsCompleted ? "text-decoration-line-through text-muted" : "")">
+                    @task.Title
+                </span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(task.Notes))
+            {
+                <p class="task-notes text-muted small mb-1">@task.Notes</p>
+            }
+            @if (task.DueDate.HasValue)
+            {
+                var isOverdue = task.DueDate.Value.Date < DateTime.Today && !task.IsCompleted;
+                var isToday = task.DueDate.Value.Date == DateTime.Today;
+                <div class="task-due-date @(isOverdue ? "text-danger" : isToday ? "text-warning" : "text-muted")">
+                    <i class="bi bi-calendar-event"></i>
+                    @task.DueDate.Value.ToString("MMM d, yyyy")
+                    @if (isOverdue)
+                    {
+                        <span class="badge bg-danger ms-1">Overdue</span>
+                    }
+                    else if (isToday)
+                    {
+                        <span class="badge bg-warning ms-1">Today</span>
+                    }
+                </div>
+            }
+            <div class="task-actions">
+                <a asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <form asp-controller="Tasks" asp-action="Delete" asp-route-id="@task.Id" method="post" class="d-inline delete-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this task?')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+}

@@ -1,0 +1,64 @@
+@model List<Eisenhower.Models.TaskItem>
+
+@if (Model.Count == 0)
+{
+    <p class="text-muted text-center py-3 mb-0">
+        <i class="bi bi-inbox d-block fs-3 mb-2"></i>
+        No tasks in this quadrant
+    </p>
+}
+else
+{
+    <div class="list-group list-group-flush">
+        @foreach (var task in Model)
+        {
+            <div class="list-group-item d-flex align-items-start @(task.IsCompleted ? "list-group-item-light" : "")">
+                <form asp-controller="Tasks" asp-action="Toggle" asp-route-id="@task.Id" method="post" class="me-3">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm p-0" title="@(task.IsCompleted ? "Mark incomplete" : "Mark complete")">
+                        <i class="bi fs-5 @(task.IsCompleted ? "bi-check-circle-fill text-success" : "bi-circle text-secondary")"></i>
+                    </button>
+                </form>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h6 class="mb-1 @(task.IsCompleted ? "text-decoration-line-through text-muted" : "")">
+                            @task.Title
+                        </h6>
+                        <div class="btn-group btn-group-sm ms-2">
+                            <a asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id" class="btn btn-outline-secondary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form asp-controller="Tasks" asp-action="Delete" asp-route-id="@task.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this task?')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(task.Notes))
+                    {
+                        <p class="text-muted small mb-1">@task.Notes</p>
+                    }
+                    @if (task.DueDate.HasValue)
+                    {
+                        var isOverdue = task.DueDate.Value.Date < DateTime.Today && !task.IsCompleted;
+                        var isToday = task.DueDate.Value.Date == DateTime.Today;
+                        <small class="@(isOverdue ? "text-danger" : isToday ? "text-warning" : "text-muted")">
+                            <i class="bi bi-calendar-event me-1"></i>
+                            @task.DueDate.Value.ToString("MMM d, yyyy")
+                            @if (isOverdue)
+                            {
+                                <span class="badge bg-danger ms-1">Overdue</span>
+                            }
+                            else if (isToday)
+                            {
+                                <span class="badge bg-warning ms-1">Today</span>
+                            }
+                        </small>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -1,0 +1,208 @@
+@model Eisenhower.Models.ViewModels.SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+        <h2 class="mb-4"><i class="bi bi-gear me-2"></i>Settings</h2>
+        
+        <!-- Statistics Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="display-6 fw-bold text-primary">@Model.TotalTasks</div>
+                        <div class="text-muted">Total Tasks</div>
+                    </div>
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="display-6 fw-bold text-success">@Model.CompletedTasks</div>
+                        <div class="text-muted">Completed</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="display-6 fw-bold text-warning">@(Model.TotalTasks - Model.CompletedTasks)</div>
+                        <div class="text-muted">Remaining</div>
+                    </div>
+                </div>
+                @if (Model.TotalTasks > 0)
+                {
+                    <div class="progress mt-3" style="height: 20px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: @((Model.CompletedTasks * 100.0 / Model.TotalTasks).ToString("F0"))%"
+                             aria-valuenow="@Model.CompletedTasks" aria-valuemin="0" aria-valuemax="@Model.TotalTasks">
+                            @((Model.CompletedTasks * 100.0 / Model.TotalTasks).ToString("F0"))%
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Appearance Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-palette me-2"></i>Appearance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-6">
+                        <h6 class="mb-1">Theme</h6>
+                        <small class="text-muted">Choose your preferred color theme</small>
+                    </div>
+                    <div class="col-md-6">
+                        <form asp-action="SetTheme" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="btn-group w-100" role="group" aria-label="Theme selection">
+                                <button type="submit" name="theme" value="Light" 
+                                        class="btn @(Model.Theme == Eisenhower.Models.ThemeMode.Light ? "btn-primary" : "btn-outline-secondary")">
+                                    <i class="bi bi-sun"></i> Light
+                                </button>
+                                <button type="submit" name="theme" value="Dark" 
+                                        class="btn @(Model.Theme == Eisenhower.Models.ThemeMode.Dark ? "btn-primary" : "btn-outline-secondary")">
+                                    <i class="bi bi-moon"></i> Dark
+                                </button>
+                                <button type="submit" name="theme" value="System" 
+                                        class="btn @(Model.Theme == Eisenhower.Models.ThemeMode.System ? "btn-primary" : "btn-outline-secondary")">
+                                    <i class="bi bi-circle-half"></i> System
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <hr />
+                
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-6">
+                        <h6 class="mb-1">Show Completed Tasks</h6>
+                        <small class="text-muted">Display or hide completed tasks in the matrix</small>
+                    </div>
+                    <div class="col-md-6">
+                        <form asp-action="SetShowCompleted" method="post" class="d-flex justify-content-md-end">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="show" value="@((!Model.ShowCompletedTasks).ToString().ToLower())" />
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="showCompletedSwitch" 
+                                       @(Model.ShowCompletedTasks ? "checked" : "") onchange="this.form.submit()">
+                                <label class="form-check-label" for="showCompletedSwitch">
+                                    @(Model.ShowCompletedTasks ? "Visible" : "Hidden")
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <hr />
+                
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h6 class="mb-1">View Mode</h6>
+                        <small class="text-muted">Choose between matrix card view or list view</small>
+                    </div>
+                    <div class="col-md-6">
+                        <form asp-action="SetViewMode" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="btn-group w-100" role="group" aria-label="View mode selection">
+                                <button type="submit" name="viewMode" value="Card" 
+                                        class="btn @(Model.ViewMode == Eisenhower.Models.ViewMode.Card ? "btn-primary" : "btn-outline-secondary")">
+                                    <i class="bi bi-grid-3x3-gap"></i> Card
+                                </button>
+                                <button type="submit" name="viewMode" value="List" 
+                                        class="btn @(Model.ViewMode == Eisenhower.Models.ViewMode.List ? "btn-primary" : "btn-outline-secondary")">
+                                    <i class="bi bi-list-ul"></i> List
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-database me-2"></i>Data Management</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-6">
+                        <h6 class="mb-1">Export Data</h6>
+                        <small class="text-muted">Download all your tasks and settings as a JSON file</small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <a asp-controller="Export" asp-action="Download" class="btn btn-outline-primary">
+                            <i class="bi bi-download me-1"></i>Export Backup
+                        </a>
+                    </div>
+                </div>
+                
+                <hr />
+                
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-6">
+                        <h6 class="mb-1">Import Data</h6>
+                        <small class="text-muted">Restore tasks from a previously exported backup file</small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <a asp-controller="Export" asp-action="Import" class="btn btn-outline-secondary">
+                            <i class="bi bi-upload me-1"></i>Import Backup
+                        </a>
+                    </div>
+                </div>
+                
+                <hr />
+                
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h6 class="mb-1 text-danger">Clear Completed Tasks</h6>
+                        <small class="text-muted">Permanently delete all completed tasks</small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <form asp-action="ClearCompleted" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger" 
+                                    onclick="return confirm('Are you sure you want to delete all @Model.CompletedTasks completed task(s)? This cannot be undone.');"
+                                    @(Model.CompletedTasks == 0 ? "disabled" : "")>
+                                <i class="bi bi-trash me-1"></i>Clear (@Model.CompletedTasks)
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>About</h5>
+            </div>
+            <div class="card-body">
+                <h6>Eisenhower Matrix</h6>
+                <p class="text-muted">
+                    The Eisenhower Matrix, also known as the Urgent-Important Matrix, helps you prioritize tasks 
+                    by urgency and importance, allowing you to focus on what truly matters.
+                </p>
+                <ul class="list-unstyled">
+                    <li><strong class="text-danger">Q1 - Do First:</strong> Urgent and important tasks that need immediate attention</li>
+                    <li><strong class="text-primary">Q2 - Schedule:</strong> Important but not urgent tasks for long-term success</li>
+                    <li><strong class="text-warning">Q3 - Delegate:</strong> Urgent but not important tasks that can be delegated</li>
+                    <li><strong class="text-secondary">Q4 - Eliminate:</strong> Neither urgent nor important tasks to minimize or eliminate</li>
+                </ul>
+                <p class="text-muted small mb-0">
+                    Version 1.0 | Built with ASP.NET Core 9 &amp; Bootstrap 5
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Handle form submission for switch
+        document.getElementById('showCompletedSwitch')?.addEventListener('change', function() {
+            this.closest('form').querySelector('input[name="show"]').value = this.checked;
+        });
+    </script>
+}
