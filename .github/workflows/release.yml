@@ -1,4 +1,4 @@
-name: Build and Release macOS App
+name: Build and Release
 
 on:
   push:
@@ -16,6 +16,9 @@ env:
   APP_NAME: 'Eisenhower'
 
 jobs:
+  # ============================================
+  # macOS Builds
+  # ============================================
   build-macos:
     runs-on: macos-latest
     strategy:
@@ -122,30 +125,222 @@ jobs:
 
       - name: Create DMG
         run: |
-          # Create a temporary directory for DMG contents
           DMG_DIR="./dmg-contents"
           mkdir -p "$DMG_DIR"
-          
-          # Copy the app bundle
           cp -R "./publish/${{ env.APP_NAME }}-${{ matrix.runtime }}.app" "$DMG_DIR/"
-          
-          # Create a symlink to Applications folder
           ln -s /Applications "$DMG_DIR/Applications"
           
-          # Create the DMG
           hdiutil create -volname "${{ env.APP_NAME }}" \
             -srcfolder "$DMG_DIR" \
             -ov -format UDZO \
             "./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg"
 
+      - name: Generate checksum
+        run: |
+          cd ./publish
+          shasum -a 256 "${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg" > "${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg.sha256"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-${{ matrix.runtime }}
-          path: ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg
+          path: |
+            ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg
+            ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.dmg.sha256
 
+  # ============================================
+  # Windows Build
+  # ============================================
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        runtime: [win-x64, win-arm64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish self-contained app
+        run: |
+          dotnet publish -c Release `
+            -r ${{ matrix.runtime }} `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:Version=${{ steps.version.outputs.VERSION }} `
+            -o ./publish/${{ matrix.runtime }}
+
+      - name: Create launcher batch file
+        shell: pwsh
+        run: |
+          $launcherContent = @'
+          @echo off
+          setlocal enabledelayedexpansion
+          
+          cd /d "%~dp0"
+          
+          REM Find an available port starting from 5000
+          set PORT=5000
+          :findport
+          netstat -an | findstr ":%PORT% " > nul
+          if %errorlevel%==0 (
+              set /a PORT+=1
+              goto findport
+          )
+          
+          set ASPNETCORE_URLS=http://localhost:%PORT%
+          set ASPNETCORE_ENVIRONMENT=Production
+          
+          REM Open browser after delay
+          start "" cmd /c "timeout /t 2 /nobreak > nul && start http://localhost:%PORT%"
+          
+          REM Run the app
+          Eisenhower.exe
+          '@
+          
+          $launcherContent | Out-File -FilePath "./publish/${{ matrix.runtime }}/Eisenhower-Launcher.bat" -Encoding ASCII
+
+      - name: Create ZIP archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "./publish/${{ matrix.runtime }}/*" -DestinationPath "./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.zip"
+
+      - name: Generate checksum
+        shell: pwsh
+        run: |
+          $hash = Get-FileHash -Path "./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.zip" -Algorithm SHA256
+          "$($hash.Hash.ToLower())  ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.zip" | Out-File -FilePath "./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.zip.sha256" -Encoding ASCII
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ matrix.runtime }}
+          path: |
+            ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.zip
+            ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.zip.sha256
+
+  # ============================================
+  # Linux Build
+  # ============================================
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [linux-x64, linux-arm64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish self-contained app
+        run: |
+          dotnet publish -c Release \
+            -r ${{ matrix.runtime }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:Version=${{ steps.version.outputs.VERSION }} \
+            -o ./publish/${{ matrix.runtime }}
+
+      - name: Create launcher script
+        run: |
+          cat > "./publish/${{ matrix.runtime }}/eisenhower-launcher.sh" << 'LAUNCHER'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          cd "$DIR"
+          
+          # Find an available port
+          PORT=5000
+          while ss -tln | grep -q ":$PORT "; do
+              PORT=$((PORT + 1))
+          done
+          
+          export ASPNETCORE_URLS="http://localhost:$PORT"
+          export ASPNETCORE_ENVIRONMENT="Production"
+          
+          # Open browser after delay (works on most Linux desktops)
+          (sleep 2 && xdg-open "http://localhost:$PORT" 2>/dev/null || sensible-browser "http://localhost:$PORT" 2>/dev/null || echo "Open http://localhost:$PORT in your browser") &
+          
+          # Run the app
+          exec "$DIR/Eisenhower"
+          LAUNCHER
+          chmod +x "./publish/${{ matrix.runtime }}/eisenhower-launcher.sh"
+          chmod +x "./publish/${{ matrix.runtime }}/Eisenhower"
+
+      - name: Create desktop entry
+        run: |
+          cat > "./publish/${{ matrix.runtime }}/eisenhower.desktop" << EOF
+          [Desktop Entry]
+          Name=Eisenhower Matrix
+          Comment=Task management using the Eisenhower Matrix
+          Exec=/opt/eisenhower/eisenhower-launcher.sh
+          Terminal=false
+          Type=Application
+          Categories=Office;ProjectManagement;
+          StartupNotify=true
+          EOF
+
+      - name: Create tarball
+        run: |
+          cd ./publish/${{ matrix.runtime }}
+          tar -czvf "../${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.tar.gz" .
+
+      - name: Generate checksum
+        run: |
+          cd ./publish
+          sha256sum "${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.tar.gz" > "${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.tar.gz.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ matrix.runtime }}
+          path: |
+            ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.tar.gz
+            ./publish/${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.runtime }}.tar.gz.sha256
+
+  # ============================================
+  # Create Release
+  # ============================================
   create-release:
-    needs: build-macos
+    needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -165,6 +360,9 @@ jobs:
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           fi
 
+      - name: List artifacts
+        run: find ./artifacts -type f
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -175,24 +373,90 @@ jobs:
           generate_release_notes: true
           files: |
             ./artifacts/**/*.dmg
+            ./artifacts/**/*.zip
+            ./artifacts/**/*.tar.gz
+            ./artifacts/**/*.sha256
           body: |
             ## Eisenhower Matrix v${{ steps.version.outputs.VERSION }}
             
-            ### Installation Instructions
+            A task management app using the Eisenhower Matrix methodology. Runs locally on your machine - your data stays private.
             
-            1. Download the appropriate DMG file for your Mac:
-               - **Apple Silicon (M1/M2/M3)**: `Eisenhower-${{ steps.version.outputs.VERSION }}-osx-arm64.dmg`
-               - **Intel Mac**: `Eisenhower-${{ steps.version.outputs.VERSION }}-osx-x64.dmg`
+            ---
             
-            2. Open the DMG file
-            3. Drag the Eisenhower app to your Applications folder
-            4. **First launch**: Right-click the app and select "Open" (required for unsigned apps). You may need to Open System Settings. Click Privacy & Security, scroll down, and click the Open Anyway button to confirm your intent to open or install the app. See [Apple Support steps](https://support.apple.com/en-us/102445#:~:text=Click%20Privacy%20%26%20Security%2C%20scroll,open%20or%20install%20the%20app).
+            ### 🍎 macOS
             
-            After the first launch, you can open the app normally by double-clicking.
+            | Architecture | Download | Checksum |
+            |-------------|----------|----------|
+            | Apple Silicon (M1/M2/M3) | `Eisenhower-${{ steps.version.outputs.VERSION }}-osx-arm64.dmg` | `.sha256` |
+            | Intel | `Eisenhower-${{ steps.version.outputs.VERSION }}-osx-x64.dmg` | `.sha256` |
             
-            ### What's New
-            See the automatically generated release notes below.
+            **Installation:**
+            1. Download the DMG for your Mac
+            2. Open the DMG and drag Eisenhower to Applications
+            3. **First launch:** Right-click → "Open" (required for unsigned apps)
+            4. If blocked, go to **System Settings → Privacy & Security → Open Anyway**
             
-            ### Note
-            This app runs a local web server and opens in your default browser. 
-            Your data is stored locally in a SQLite database.
+            ---
+            
+            ### 🪟 Windows
+            
+            | Architecture | Download | Checksum |
+            |-------------|----------|----------|
+            | x64 (most PCs) | `Eisenhower-${{ steps.version.outputs.VERSION }}-win-x64.zip` | `.sha256` |
+            | ARM64 | `Eisenhower-${{ steps.version.outputs.VERSION }}-win-arm64.zip` | `.sha256` |
+            
+            **Installation:**
+            1. Download and extract the ZIP file
+            2. Run `Eisenhower-Launcher.bat`
+            3. **Windows SmartScreen:** Click "More info" → "Run anyway"
+            
+            ---
+            
+            ### 🐧 Linux
+            
+            | Architecture | Download | Checksum |
+            |-------------|----------|----------|
+            | x64 | `Eisenhower-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz` | `.sha256` |
+            | ARM64 | `Eisenhower-${{ steps.version.outputs.VERSION }}-linux-arm64.tar.gz` | `.sha256` |
+            
+            **Installation:**
+            ```bash
+            # Extract
+            sudo mkdir -p /opt/eisenhower
+            sudo tar -xzf Eisenhower-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz -C /opt/eisenhower
+            
+            # Run
+            /opt/eisenhower/eisenhower-launcher.sh
+            
+            # Optional: Install desktop entry
+            sudo cp /opt/eisenhower/eisenhower.desktop /usr/share/applications/
+            ```
+            
+            ---
+            
+            ### 🔐 Security Verification
+            
+            Verify your download using the SHA-256 checksum:
+            
+            **macOS/Linux:**
+            ```bash
+            shasum -a 256 -c Eisenhower-${{ steps.version.outputs.VERSION }}-<platform>.sha256
+            ```
+            
+            **Windows (PowerShell):**
+            ```powershell
+            Get-FileHash Eisenhower-${{ steps.version.outputs.VERSION }}-win-x64.zip -Algorithm SHA256
+            # Compare with contents of .sha256 file
+            ```
+            
+            ---
+            
+            ### ℹ️ How It Works
+            
+            This app runs a local web server on your machine and opens in your default browser. 
+            - **Privacy:** Your data is stored locally in SQLite - nothing is sent to external servers
+            - **Network:** Only binds to `localhost` - not accessible from other devices
+            - **Data location:** 
+              - macOS: `~/Library/Application Support/Eisenhower/`
+              - Windows: `%APPDATA%\Eisenhower\`
+              - Linux: `~/.config/Eisenhower/`

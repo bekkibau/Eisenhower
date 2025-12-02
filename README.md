@@ -46,52 +46,89 @@ A task management web application built with ASP.NET Core 9 and C# 13, implement
 
 ## Installation
 
-### Option 1: Download macOS App (Recommended)
+### Downloads
 
-Download the latest release from the [Releases](../../releases) page:
+Download the latest release from the [Releases](../../releases) page.
 
-- **Apple Silicon (M1/M2/M3)**: `Eisenhower-x.x.x-osx-arm64.dmg`
-- **Intel Mac**: `Eisenhower-x.x.x-osx-x64.dmg`
+| Platform | Architecture | Download |
+|----------|-------------|----------|
+| 🍎 macOS | Apple Silicon (M1/M2/M3) | `Eisenhower-x.x.x-osx-arm64.dmg` |
+| 🍎 macOS | Intel | `Eisenhower-x.x.x-osx-x64.dmg` |
+| 🪟 Windows | x64 (most PCs) | `Eisenhower-x.x.x-win-x64.zip` |
+| 🪟 Windows | ARM64 | `Eisenhower-x.x.x-win-arm64.zip` |
+| 🐧 Linux | x64 | `Eisenhower-x.x.x-linux-x64.tar.gz` |
+| 🐧 Linux | ARM64 | `Eisenhower-x.x.x-linux-arm64.tar.gz` |
 
-**Installation steps:**
-1. Open the downloaded DMG file
-2. Drag the Eisenhower app to your Applications folder
-3. **First launch only**: Right-click the app and select "Open" (required for unsigned apps). You may need to Open System Settings. Click Privacy & Security, scroll down, and click the Open Anyway button to confirm your intent to open or install the app. See [Apple Support steps](https://support.apple.com/en-us/102445#:~:text=Click%20Privacy%20%26%20Security%2C%20scroll,open%20or%20install%20the%20app).
+### macOS Installation
 
-The app will automatically open in your default browser. Your data is stored locally.
+1. Download the DMG for your Mac architecture
+2. Open the DMG and drag Eisenhower to your Applications folder
+3. **First launch:** Right-click the app → "Open" (required for unsigned apps)
+4. If blocked: **System Settings → Privacy & Security → Open Anyway**
 
-### Option 2: Run from Source
+See [Apple Support](https://support.apple.com/en-us/102445) for detailed steps.
+
+### Windows Installation
+
+1. Download and extract the ZIP file to a folder (e.g., `C:\Program Files\Eisenhower`)
+2. Run `Eisenhower-Launcher.bat`
+3. **Windows SmartScreen:** Click "More info" → "Run anyway"
+
+### Linux Installation
 
 ```bash
-# Restore dependencies
-dotnet restore
+# Extract to /opt
+sudo mkdir -p /opt/eisenhower
+sudo tar -xzf Eisenhower-x.x.x-linux-x64.tar.gz -C /opt/eisenhower
 
-# Run the application
-dotnet run
+# Run the app
+/opt/eisenhower/eisenhower-launcher.sh
+
+# Optional: Add desktop shortcut
+sudo cp /opt/eisenhower/eisenhower.desktop /usr/share/applications/
 ```
 
-The application will start at `http://localhost:5086`.
+### 🔐 Verify Downloads (Security)
+
+Each release includes SHA-256 checksums. Verify your download:
+
+**macOS/Linux:**
+```bash
+shasum -a 256 -c Eisenhower-x.x.x-<platform>.sha256
+```
+
+**Windows (PowerShell):**
+```powershell
+Get-FileHash Eisenhower-x.x.x-win-x64.zip -Algorithm SHA256
+# Compare output with contents of .sha256 file
+```
+
+### Run from Source
+
+Requires [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0).
+
+```bash
+dotnet restore
+dotnet run
+```
 
 ## Getting Started
 
-### Run
+The application will start at `http://localhost:5086` and open in your default browser.
 
-```bash
-# Clone
-git clone https://github.com/bekkibau/Eisenhower.git
+### How It Works
 
-# Restore dependencies
-dotnet restore
-
-# Run the application
-dotnet run
-```
-
-The application will start at `https://localhost:5086` (or `http://localhost:5086`).
+This app runs a local web server on your machine:
+- **Privacy:** Your data is stored locally in SQLite - nothing is sent to external servers
+- **Network:** Only binds to `localhost` - not accessible from other devices
+- **Data location:** 
+  - macOS: `~/Library/Application Support/Eisenhower/`
+  - Windows: `%APPDATA%\Eisenhower\`
+  - Linux: `~/.config/Eisenhower/`
 
 ### Database
 
-The application uses SQLite with Entity Framework Core. The database file (`eisenhower.db`) is automatically created on first run in the project directory.
+The SQLite database (`eisenhower.db`) is automatically created on first run.
 
 ## Project Structure
 
