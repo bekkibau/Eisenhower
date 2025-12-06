@@ -68,85 +68,149 @@
 
 @if (Model.ViewMode == Eisenhower.Models.ViewMode.Card)
 {
-    <!-- Matrix Grid View -->
-    <div class="matrix-container">
-        <!-- Header Labels -->
-        <div class="matrix-header">
-            <div class="matrix-corner"></div>
-            <div class="matrix-col-header urgent-header">
-                <i class="bi bi-exclamation-triangle-fill"></i> URGENT
+    @if (Model.FilterQuadrant.HasValue)
+    {
+        <!-- Filtered Single Quadrant View -->
+        <div class="matrix-container d-block">
+            @switch (Model.FilterQuadrant.Value)
+            {
+                case Eisenhower.Models.Quadrant.UrgentImportant:
+                    <div class="quadrant quadrant-1 h-100">
+                        <div class="quadrant-header">
+                            <span class="quadrant-title">Q1: Urgent & Important - DO FIRST</span>
+                            <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="0" class="btn btn-sm btn-light">
+                                <i class="bi bi-plus"></i>
+                            </a>
+                        </div>
+                        <div class="task-list">
+                            @await Html.PartialAsync("_TaskList", Model.UrgentImportantTasks)
+                        </div>
+                    </div>
+                    break;
+                case Eisenhower.Models.Quadrant.NotUrgentImportant:
+                    <div class="quadrant quadrant-2 h-100">
+                        <div class="quadrant-header">
+                            <span class="quadrant-title">Q2: Not Urgent but Important - SCHEDULE</span>
+                            <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="1" class="btn btn-sm btn-light">
+                                <i class="bi bi-plus"></i>
+                            </a>
+                        </div>
+                        <div class="task-list">
+                            @await Html.PartialAsync("_TaskList", Model.NotUrgentImportantTasks)
+                        </div>
+                    </div>
+                    break;
+                case Eisenhower.Models.Quadrant.UrgentNotImportant:
+                    <div class="quadrant quadrant-3 h-100">
+                        <div class="quadrant-header">
+                            <span class="quadrant-title">Q3: Urgent but Not Important - DELEGATE</span>
+                            <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="2" class="btn btn-sm btn-light">
+                                <i class="bi bi-plus"></i>
+                            </a>
+                        </div>
+                        <div class="task-list">
+                            @await Html.PartialAsync("_TaskList", Model.UrgentNotImportantTasks)
+                        </div>
+                    </div>
+                    break;
+                case Eisenhower.Models.Quadrant.NotUrgentNotImportant:
+                    <div class="quadrant quadrant-4 h-100">
+                        <div class="quadrant-header">
+                            <span class="quadrant-title">Q4: Not Urgent & Not Important - ELIMINATE</span>
+                            <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="3" class="btn btn-sm btn-light">
+                                <i class="bi bi-plus"></i>
+                            </a>
+                        </div>
+                        <div class="task-list">
+                            @await Html.PartialAsync("_TaskList", Model.NotUrgentNotImportantTasks)
+                        </div>
+                    </div>
+                    break;
+            }
+        </div>
+    }
+    else
+    {
+        <!-- Matrix Grid View -->
+        <div class="matrix-container">
+            <!-- Header Labels -->
+            <div class="matrix-header">
+                <div class="matrix-corner"></div>
+                <div class="matrix-col-header urgent-header">
+                    <i class="bi bi-exclamation-triangle-fill"></i> URGENT
+                </div>
+                <div class="matrix-col-header not-urgent-header">
+                    <i class="bi bi-clock"></i> NOT URGENT
+                </div>
             </div>
-            <div class="matrix-col-header not-urgent-header">
-                <i class="bi bi-clock"></i> NOT URGENT
+
+            <!-- Important Row -->
+            <div class="matrix-row">
+                <div class="matrix-row-header important-header">
+                    <span><i class="bi bi-star-fill"></i> IMPORTANT</span>
+                </div>
+                
+                <!-- Q1: Urgent & Important -->
+                <div class="quadrant quadrant-1">
+                    <div class="quadrant-header">
+                        <span class="quadrant-title">DO FIRST</span>
+                        <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="0" class="btn btn-sm btn-light">
+                            <i class="bi bi-plus"></i>
+                        </a>
+                    </div>
+                    <div class="task-list">
+                        @await Html.PartialAsync("_TaskList", Model.UrgentImportantTasks)
+                    </div>
+                </div>
+
+                <!-- Q2: Not Urgent but Important -->
+                <div class="quadrant quadrant-2">
+                    <div class="quadrant-header">
+                        <span class="quadrant-title">SCHEDULE</span>
+                        <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="1" class="btn btn-sm btn-light">
+                            <i class="bi bi-plus"></i>
+                        </a>
+                    </div>
+                    <div class="task-list">
+                        @await Html.PartialAsync("_TaskList", Model.NotUrgentImportantTasks)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Not Important Row -->
+            <div class="matrix-row">
+                <div class="matrix-row-header not-important-header">
+                    <span><i class="bi bi-star"></i> NOT IMPORTANT</span>
+                </div>
+
+                <!-- Q3: Urgent but Not Important -->
+                <div class="quadrant quadrant-3">
+                    <div class="quadrant-header">
+                        <span class="quadrant-title">DELEGATE</span>
+                        <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="2" class="btn btn-sm btn-light">
+                            <i class="bi bi-plus"></i>
+                        </a>
+                    </div>
+                    <div class="task-list">
+                        @await Html.PartialAsync("_TaskList", Model.UrgentNotImportantTasks)
+                    </div>
+                </div>
+
+                <!-- Q4: Not Urgent & Not Important -->
+                <div class="quadrant quadrant-4">
+                    <div class="quadrant-header">
+                        <span class="quadrant-title">ELIMINATE</span>
+                        <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="3" class="btn btn-sm btn-light">
+                            <i class="bi bi-plus"></i>
+                        </a>
+                    </div>
+                    <div class="task-list">
+                        @await Html.PartialAsync("_TaskList", Model.NotUrgentNotImportantTasks)
+                    </div>
+                </div>
             </div>
         </div>
-
-        <!-- Important Row -->
-        <div class="matrix-row">
-            <div class="matrix-row-header important-header">
-                <span><i class="bi bi-star-fill"></i> IMPORTANT</span>
-            </div>
-            
-            <!-- Q1: Urgent & Important -->
-            <div class="quadrant quadrant-1">
-                <div class="quadrant-header">
-                    <span class="quadrant-title">DO FIRST</span>
-                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="0" class="btn btn-sm btn-light">
-                        <i class="bi bi-plus"></i>
-                    </a>
-                </div>
-                <div class="task-list">
-                    @await Html.PartialAsync("_TaskList", Model.UrgentImportantTasks)
-                </div>
-            </div>
-
-            <!-- Q2: Not Urgent but Important -->
-            <div class="quadrant quadrant-2">
-                <div class="quadrant-header">
-                    <span class="quadrant-title">SCHEDULE</span>
-                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="1" class="btn btn-sm btn-light">
-                        <i class="bi bi-plus"></i>
-                    </a>
-                </div>
-                <div class="task-list">
-                    @await Html.PartialAsync("_TaskList", Model.NotUrgentImportantTasks)
-                </div>
-            </div>
-        </div>
-
-        <!-- Not Important Row -->
-        <div class="matrix-row">
-            <div class="matrix-row-header not-important-header">
-                <span><i class="bi bi-star"></i> NOT IMPORTANT</span>
-            </div>
-
-            <!-- Q3: Urgent but Not Important -->
-            <div class="quadrant quadrant-3">
-                <div class="quadrant-header">
-                    <span class="quadrant-title">DELEGATE</span>
-                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="2" class="btn btn-sm btn-light">
-                        <i class="bi bi-plus"></i>
-                    </a>
-                </div>
-                <div class="task-list">
-                    @await Html.PartialAsync("_TaskList", Model.UrgentNotImportantTasks)
-                </div>
-            </div>
-
-            <!-- Q4: Not Urgent & Not Important -->
-            <div class="quadrant quadrant-4">
-                <div class="quadrant-header">
-                    <span class="quadrant-title">ELIMINATE</span>
-                    <a asp-controller="Tasks" asp-action="Create" asp-route-quadrant="3" class="btn btn-sm btn-light">
-                        <i class="bi bi-plus"></i>
-                    </a>
-                </div>
-                <div class="task-list">
-                    @await Html.PartialAsync("_TaskList", Model.NotUrgentNotImportantTasks)
-                </div>
-            </div>
-        </div>
-    </div>
+    }
 }
 else
 {
